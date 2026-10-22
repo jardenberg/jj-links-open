@@ -39,6 +39,51 @@ npm test
 npm run build
 ```
 
+## The easiest setup: ask an AI assistant
+
+You do not need to be an engineer or a GitHub expert to get JJ Links running. A capable AI coding assistant with access to a browser and terminal can inspect this repository, explain the few account-level choices and guide you through most of the setup.
+
+You will still need to own or control the domains, sign in to Cloudflare, approve security-sensitive changes and decide where the private dashboard should live. The AI should never ask you to paste API tokens into chat or commit them to GitHub.
+
+Copy this prompt into ChatGPT, Claude or another capable coding assistant:
+
+```text
+Help me set up my own private JJ Links dashboard from this repository:
+https://github.com/jardenberg/jj-links-open
+
+My goal is to manage two branded short-link domains through Cloudflare Bulk
+Redirects, with a private dashboard, request analytics, safe create/update
+workflows and rollback snapshots.
+
+Please inspect the repository and guide me through the complete setup. Assume I
+am comfortable making decisions but do not want to operate Git, a terminal or
+Cloudflare configuration without guidance.
+
+Explain each human step briefly in plain language, including why it is needed.
+Do as much of the implementation and verification as your available tools allow.
+
+Security requirements:
+- Never ask me to paste an API token, password or secret into the conversation.
+- Use a narrowly scoped Cloudflare token and store it only as a server-side secret.
+- Keep the dashboard private and add the owner-email check as defense in depth.
+- Never commit my real redirect export, analytics, account IDs or deployment IDs
+  to a public repository.
+- Get my explicit confirmation before changing DNS, access permissions, repository
+  visibility or an existing production redirect list.
+
+Start by asking only for the information you genuinely need, such as my two short
+domains, whether I already have a Cloudflare Bulk Redirect List and where I want
+the dashboard hosted. Use the synthetic sample data until the private runtime is
+ready.
+
+Before calling the setup complete, run the tests and production build, verify that
+an anonymous visitor cannot access the dashboard, verify one known redirect on
+each domain, confirm the live inventory count, and give me a short rollback and
+credential-rotation checklist.
+```
+
+Different assistants have different access to browsers, terminals and Cloudflare. If yours cannot perform a step directly, it should tell you exactly where to click and what result to look for rather than guessing that the step succeeded.
+
 ## Connect your Cloudflare account
 
 JJ Links currently supports exactly two short-link hostnames. Copy `.env.example` to `.dev.vars` for local development and provide:
