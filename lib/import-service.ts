@@ -19,7 +19,7 @@ const serialize = (value: unknown) => {
 };
 
 export async function previewImport(user: AppUser, csv: string, mode: ImportMode) {
-  const incoming = readImportCsv(csv, sourceHosts());
+  const incoming = readImportCsv(csv, sourceHosts(), mode === "restore");
   const before = cloudflareConfigured() ? (await getInventory()).items : (await getDashboardData()).inventory;
   if (before.some((item) => !sourceHosts().includes(sourceUrl(item.source_url).hostname))) throw new ApiError(409, "Use a dedicated redirect list containing only your configured short domains.");
   const plan = planImport(before, incoming, mode);

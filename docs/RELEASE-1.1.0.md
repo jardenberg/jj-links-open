@@ -25,7 +25,7 @@ Deliberate first-version limits: one owner, one account/zone, exactly two short 
 | Deploy a separate Worker and D1 | Cloudflare test resources | All four migrations applied; Worker published; locked setup visible before Access configuration |
 | Reject anonymous inventory access before setup | Direct deployed HTTP requests | API returns 503; forged email headers disclose no inventory or app assets |
 
-The local suite includes 23 regression tests. Type checking, lint, production build and dependency audit passed. Full dependency audit reported zero vulnerabilities at the time of verification. These results do not establish universal reliability or human ease of setup.
+The local suite includes 25 regression tests. Type checking, lint, production build and dependency audit passed. Full dependency audit reported zero vulnerabilities at the time of verification. These results do not establish universal reliability or human ease of setup.
 
 ## Live verification still to finish
 

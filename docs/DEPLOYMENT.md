@@ -41,6 +41,8 @@ Save/deploy those settings. The application checks the token signature, issuer, 
 
 Cloudflare may require initial Zero Trust account setup before offering Access. The current setup screen offers a Free plan suitable for this single-owner use. Confirm the plan and team name with the account owner; never silently create an organization or accept a paid plan.
 
+The Free activation flow can still require a stored payment method and explicit authorization for charges above included limits. A $0 checkout is not a promise of unconditional zero cost. Stop and ask the account owner before accepting that authorization. No additional Zero Trust features are needed for this dashboard.
+
 Official instructions: [Access on workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/), [one-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/), [JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
 
 ## 3. Connect your short-link account

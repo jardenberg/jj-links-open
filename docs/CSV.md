@@ -30,6 +30,8 @@ Listed rows add or update links. Unlisted links remain. Review destination chang
 
 The complete resulting list matches the file. The preview shows links that will be removed. Type `RESTORE <current count>` and confirm the reviewed changes before applying.
 
+A header-only export represents an empty list. It is accepted only in restore mode, with every removal displayed and the same typed confirmation. An empty merge is rejected, so a blank file cannot silently clear the list.
+
 The app saves a full pre-import D1 snapshot first. Download that backup after the import; use it for a reviewed reverse restore if needed.
 
 ## Confirmation and verification

@@ -24,6 +24,22 @@ test("CSV round-trips quotes, Unicode, newlines and options without silently dro
   } finally { r.close(); }
 });
 
+test("scheme-qualified CSV sources and root paths remain usable without changing their stored spelling", async () => {
+  const r = await runtime();
+  try {
+    const source = "https://go.example.com/Docs";
+    const parsed = r.readImportCsv(r.exportRedirectCsv([item(source)]), ["go.example.com", "ai.example.com"])[0];
+    assert.equal(parsed.source_url, source);
+    assert.equal(r.sourceUrl(source).href, source);
+    assert.equal(r.metricKey(source), r.metricKey("go.example.com/Docs"));
+    const root = item("http://go.example.com/");
+    const edited = r.updatedItem(root, { host: "go.example.com", slug: "", targetUrl: "https://example.com/new" }, ["go.example.com", "ai.example.com"]);
+    assert.equal(edited.source_url, root.source_url);
+    assert.equal(edited.target_url, "https://example.com/new");
+    assert.throws(() => r.normalizeInput({ host: "go.example.com", slug: "", targetUrl: "https://example.com/new" }, ["go.example.com", "ai.example.com"]), /Enter a path/);
+  } finally { r.close(); }
+});
+
 async function environment() {
   const r = await runtime();
   const originalFetch = globalThis.fetch;
@@ -156,5 +172,22 @@ test("restore requires a typed count, stale or expired previews cannot write, an
     const final = await r.previewImport(user, csv, "restore");
     assert.equal((await r.applyImport(user, final.id, "RESTORE 3")).outcome, "confirmed");
     assert.equal(fixture.items.length, 1);
+  } finally { fixture.close(); }
+});
+
+test("an empty before-state backup can be restored only through explicit reviewed restore", async () => {
+  const fixture = await environment(); const { r, user } = fixture;
+  try {
+    const emptyBackup = r.exportRedirectCsv([]);
+    await assert.rejects(() => r.previewImport(user, emptyBackup, "merge"), /explicit restore mode/);
+    const preview = await r.previewImport(user, emptyBackup, "restore");
+    assert.equal(preview.counts.removed, 2); assert.equal(preview.counts.after, 0);
+    await assert.rejects(() => r.applyImport(user, preview.id, ""), { status: 400 });
+    assert.equal(fixture.writes, 0);
+    const saved = await r.applyImport(user, preview.id, "RESTORE 2");
+    assert.equal(saved.outcome, "confirmed"); assert.equal(fixture.items.length, 0);
+    assert.equal((await r.verifyImport(user, preview.id, 0)).verified, 2);
+    const backup = await r.exportRoute(new Request("https://links.example.com/api/export?backup=" + saved.backupId));
+    assert.equal(r.readImportCsv(await backup.text(), ["go.example.com", "ai.example.com"]).length, 2);
   } finally { fixture.close(); }
 });

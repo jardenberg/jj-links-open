@@ -8,13 +8,13 @@ export const MAX_LIST_ITEMS = 1000;
 export type ImportMode = "merge" | "restore";
 export type Change = { source: string; kind: "added" | "changed" | "removed" | "unchanged"; before?: RedirectItem; after?: RedirectItem };
 
-export function readImportCsv(text: string, hosts: string[]): RedirectItem[] {
+export function readImportCsv(text: string, hosts: string[], allowEmpty = false): RedirectItem[] {
   if (new TextEncoder().encode(text).length > 1_000_000) throw new ApiError(413, "Choose a CSV smaller than 1 MB.");
   const rows = parseCsv(text).filter((row) => row.some((cell) => cell.length));
   const header = rows.shift()?.map((value) => value.trim().toLowerCase().replaceAll(" ", "_"));
   if (!header || !["source_url", "target_url", "status_code"].every((name) => header.includes(name))) throw new ApiError(400, "Use a redirect configuration CSV with source_url, target_url and status_code columns. Analytics exports are not redirect backups.");
   if (new Set(header).size !== header.length) throw new ApiError(400, "CSV contains duplicate column names.");
-  if (!rows.length || rows.length > MAX_IMPORT_ROWS) throw new ApiError(400, `Import between 1 and ${MAX_IMPORT_ROWS} redirects at a time.`);
+  if ((!rows.length && !allowEmpty) || rows.length > MAX_IMPORT_ROWS) throw new ApiError(400, `Import between 1 and ${MAX_IMPORT_ROWS} redirects at a time. A header-only backup is accepted only in explicit restore mode.`);
   const sources = new Set<string>();
   return rows.map((row, index) => {
     const fail = (message: string): never => { throw new ApiError(400, `Row ${index + 2}: ${message}`); };

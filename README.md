@@ -46,8 +46,9 @@ account and zone. Keep real redirect exports and analytics out of public Git.
 
 Ask which two short domains I want and whether I already have a Bulk Redirect
 List. Use the Deploy to Cloudflare flow when possible. Do not change DNS, replace
-an existing production list, change repository visibility or purchase a plan
-without my confirmation of the exact change.
+an existing production list, change repository visibility, purchase a plan or
+accept an overage-billing authorization without my confirmation of the exact
+change.
 
 Before calling the installation ready, verify anonymous access is rejected,
 the allowed owner can sign in, the correct list is selected, the full inventory

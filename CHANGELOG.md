@@ -24,6 +24,7 @@ All notable changes to JJ Links Open are recorded here. Newest releases come fir
 - Resume an interrupted CSV import using its original saved request, including a response lost after Cloudflare confirmed it.
 - Keep list selection stable throughout an import and reject previews that exceed D1's complete-row size limit.
 - Keep setup, CSV and creation controls usable on narrow phone screens.
+- Preserve scheme-qualified and root source URLs through display, copying and editing, and allow an empty-list backup only through explicitly confirmed restore.
 
 ### Upgrade note
 
