@@ -12,24 +12,29 @@ Cloudflare Builds should use `npm run build` as the build command and `npm run d
 
 Your first visit shows a setup page until Access is configured. No redirect inventory is available anonymously.
 
-## 2. Turn on email sign-in
+## 2. Turn on private sign-in
 
-For the default `workers.dev` hostname, open:
+First create an exact-email policy in **Cloudflare Zero Trust → Access controls → Policies → Add a policy**:
 
-**Cloudflare → Workers & Pages → your Worker → Access.**
+- Name: something recognizable, such as **My links owner**.
+- Action: **Allow**.
+- Include selector: **Emails**, with the exact email used by your Cloudflare account as the only value.
+- Save the policy. Do not use Everyone, Bypass or the broader "Emails ending in" selector.
 
-The current dashboard has a dedicated Access tab. Older layouts place this under **Settings → Domains & Routes → workers.dev → Enable Cloudflare Access**.
+Then open **Cloudflare → Workers & Pages → your Worker → Access → Protect this Worker behind Access**:
 
-For a custom hostname, create a self-hosted Access application for that exact hostname in Cloudflare Zero Trust.
+1. Set scope to **All traffic**, not the default **Previews only**.
+2. Select your saved owner-only policy under **Access policies**. The preconfigured account/domain policies are broader than this single-owner setup.
+3. Leave the session duration at **24 hours** and apply Access.
+4. Under **Application values**, copy the **AUD tag** and the team hostname from the **JWKS** URL. For example, `https://your-team.cloudflareaccess.com/cdn-cgi/access/certs` means the team hostname is `your-team.cloudflareaccess.com`.
 
-Configure the application:
+Keep Cloudflare's own sign-in as the default login method. You already need that account to manage your domains, so it avoids configuring another identity provider. The app still restricts the verified email to its owner. **Manage Access app** opens detailed authentication settings. Older dashboard layouts place Access controls under **Settings → Domains & Routes → workers.dev**.
 
-- Login method: **One-time PIN**.
-- Allow policy: **Emails → your exact email address**.
-- Do not use an Everyone or Bypass policy.
-- A one-day session duration is a reasonable starting point.
+An email one-time PIN is an optional alternative if you configure that identity provider in Zero Trust. It is not needed for the default setup. [Cloudflare's one-time PIN guide](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/).
 
-Copy the application's **AUD** value and the team's `your-team.cloudflareaccess.com` hostname. In the Worker's **Settings → Variables and Secrets**, add these non-secret runtime values:
+Worker-level protection covers its production URL, previews and custom domains. If you add a separate hostname-specific Access application, that application's audience may take precedence; match the app's AUD setting to the policy protecting the URL you actually use. [Cloudflare's Access hierarchy](https://developers.cloudflare.com/workers/configuration/cloudflare-access/#understand-access-hierarchy).
+
+In the Worker's **Settings → Variables and Secrets**, add these non-secret runtime values:
 
 | Setting | What to enter |
 |---|---|
@@ -39,11 +44,11 @@ Copy the application's **AUD** value and the team's `your-team.cloudflareaccess.
 
 Save/deploy those settings. The application checks the token signature, issuer, audience, expiry and email itself. A direct Worker URL cannot bypass it merely by supplying an email header.
 
-Cloudflare may require initial Zero Trust account setup before offering Access. The current setup screen offers a Free plan suitable for this single-owner use. Confirm the plan and team name with the account owner; never silently create an organization or accept a paid plan.
+Cloudflare may require initial Zero Trust account setup before offering Access. The current setup screen offers a Free plan suitable for this single-owner use and can assign a team name automatically. Confirm the plan with the account owner; never silently create an organization or accept a paid plan. You do not need to rename an assigned team hostname.
 
 The Free activation flow can still require a stored payment method and explicit authorization for charges above included limits. A $0 checkout is not a promise of unconditional zero cost. Stop and ask the account owner before accepting that authorization. No additional Zero Trust features are needed for this dashboard.
 
-Official instructions: [Access on workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/), [one-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/), [JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
+Official instructions: [Access on workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/) and [JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
 
 ## 3. Connect your short-link account
 
@@ -82,7 +87,7 @@ Official guidance: [Bulk Redirect setup](https://developers.cloudflare.com/rules
 ## Verify before relying on the installation
 
 1. In a signed-out/private browser, the dashboard and API do not disclose inventory.
-2. The allowed owner signs in with the Cloudflare email code.
+2. The allowed owner signs in through the Cloudflare button using the configured account email.
 3. A different email cannot read the dashboard.
 4. The selected list and full count match Cloudflare.
 5. Known paths on both short hosts return their saved destinations.

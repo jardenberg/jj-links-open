@@ -2,7 +2,7 @@
 
 **So many links, one single dashboard.**
 
-A private dashboard for branded short links that runs entirely in **your Cloudflare account**. Workers hosts the application, D1 stores your backups and analytics, and Cloudflare Access signs you in with an email code. No OpenAI Sites, ChatGPT subscription or AI API is needed to run it.
+A private dashboard for branded short links that runs entirely in **your Cloudflare account**. Workers hosts the application, D1 stores your backups and analytics, and Cloudflare Access protects it using your existing Cloudflare sign-in. No OpenAI Sites, ChatGPT subscription or AI API is needed to run it.
 
 Cloudflare Bulk Redirects keeps serving your links directly. Closing or taking the dashboard offline does not stop redirects.
 
@@ -15,7 +15,7 @@ Cloudflare Bulk Redirects keeps serving your links directly. Closing or taking t
 You need a Cloudflare account, control of your short-link domains, and a GitHub account for the deployment button to copy the source. Your copy can be private.
 
 1. **Click Deploy to Cloudflare.** Follow the Cloudflare screens to create your Worker and D1 database. The database migrations run during deployment.
-2. **Protect the dashboard with Cloudflare Access.** Choose email one-time PIN and allow your email only. Add the team hostname, application audience and owner email to the Worker's settings. Until then, the application shows a locked setup page.
+2. **Protect the dashboard with Cloudflare Access.** Allow only your exact Cloudflare account email and protect all traffic to this Worker. Add the team hostname, application audience and owner email to the Worker's settings. Until then, the application shows a locked setup page.
 3. **Connect your redirect account.** Store a narrowly scoped Cloudflare API token as a secret, then set the account ID, zone ID and your two short hostnames.
 4. **Open Connect Cloudflare in the dashboard.** Pick your existing Bulk Redirect List by name. The app checks that its redirect rule is enabled and the list belongs to your configured hosts.
 
@@ -36,8 +36,10 @@ I want a private dashboard for two short-link hostnames. Keep explanations brief
 and practical. Handle the code, database migrations and configuration with your
 tools, and tell me exactly which account decisions or sign-in steps I must do.
 
-Use Workers + D1 + Cloudflare Access, with an email one-time PIN policy allowing
-only my email. Verify the signed Access token in the application. Never enable
+Use Workers + D1 + Cloudflare Access, with an Allow policy for only my exact
+Cloudflare account email. Prefer Cloudflare's existing sign-in for the simplest
+setup. Protect all Worker traffic, not previews alone. Verify the signed Access
+token in the application. Never enable
 a production authentication bypass or trust an email header without verification.
 
 Do not ask me to paste passwords or API tokens into chat. Guide me to enter the

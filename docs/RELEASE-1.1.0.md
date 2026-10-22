@@ -1,6 +1,6 @@
 # 1.1.0 release and verification
 
-Status: implementation complete; live Access verification in progress.
+This record covers [v1.1.0](https://github.com/jardenberg/jj-links-open/releases/tag/v1.1.0). Implementation and verification are tracked in [release PR #9](https://github.com/jardenberg/jj-links-open/pull/9).
 
 ## Scope
 
@@ -24,15 +24,19 @@ Deliberate first-version limits: one owner, one account/zone, exactly two short 
 | Keyboard modal recovery | Browser, 320px | Escape closes the connection panel and restores trigger focus |
 | Deploy a separate Worker and D1 | Cloudflare test resources | All four migrations applied; Worker published; locked setup visible before Access configuration |
 | Reject anonymous inventory access before setup | Direct deployed HTTP requests | API returns 503; forged email headers disclose no inventory or app assets |
+| Protect the complete deployed Worker | Cloudflare Access configuration and direct HTTP | Owner-only email policy covers all traffic; anonymous page, dashboard API, export and asset requests return 302 to Access, even with forged email headers |
+| Sign in as the owner | Deployed Worker in Chrome | Existing Cloudflare sign-in succeeds; protected dashboard displays version 1.1.0 |
+| Use authenticated CSV tools | Deployed Worker in Chrome | Export downloads; synthetic merge preview proposes one addition, one change and three retained links, with no removals or live writes |
 
 The local suite includes 25 regression tests. Type checking, lint, production build and dependency audit passed. Full dependency audit reported zero vulnerabilities at the time of verification. These results do not establish universal reliability or human ease of setup.
 
-## Live verification still to finish
+## Evidence boundaries
 
-- Activate Access in the test account with the owner's chosen plan and team name.
-- Prove owner email sign-in on the deployed hostname, alongside anonymous rejection.
-- Re-run export and harmless preview on that authenticated deployment.
-- Verify GitHub CI and the final release commit/tag before marking this release published.
+The owner approved activation of Zero Trust Free, including Cloudflare's required overage-billing authorization. The default Cloudflare identity provider was retained rather than adding an email-code provider. The application independently verifies the resulting signed token and owner email.
+
+Live browser checks use synthetic sample links behind real Access authentication. No real redirect token or operational list was installed in the test deployment. Bulk configuration writes, replay, snapshots and rollback were exercised with real SQLite and mocked Cloudflare protocol responses, not by mutating production redirects. Repeat the installation checklist for your own account before relying on it.
+
+GitHub's required `verify` check passed on the release branch. It includes tests, type checking, privacy check, lint, production build, Wrangler dry run and full dependency audit.
 
 The Cloudflare deployment button and migration script follow [Cloudflare's supported template flow](https://developers.cloudflare.com/workers/platform/deploy-buttons/). The isolated live deployment used Wrangler; it does not establish that every account's first-run button or billing screens behave identically.
 

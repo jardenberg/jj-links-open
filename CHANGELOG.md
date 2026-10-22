@@ -6,7 +6,7 @@ All notable changes to JJ Links Open are recorded here. Newest releases come fir
 
 ### Added
 
-- Standard Cloudflare Workers, D1 and Access deployment, with email one-time PIN sign-in and a Deploy to Cloudflare entry point.
+- Standard Cloudflare Workers, D1 and Access deployment, with owner-only Cloudflare sign-in and a Deploy to Cloudflare entry point.
 - Application verification of Access signatures, issuer, audience, expiry and the configured owner on every request.
 - CSV download, merge preview and complete-backup restore with explicit review, a typed restore confirmation and a pre-import snapshot.
 - Stale-preview protection, idempotent bulk writes, downloadable pre-import backups and paged public verification.

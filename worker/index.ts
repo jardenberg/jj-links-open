@@ -20,7 +20,18 @@ const routes: Record<string, (request: Request) => Promise<Response>> = {
 };
 
 function setupResponse() {
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Set up JJ Links</title></head><body style="background:#09090b;color:#f7f4ef;font:17px system-ui;max-width:760px;margin:8vh auto;padding:24px;line-height:1.6"><h1>Your JJ Links installation is ready to secure.</h1><p>The dashboard stays locked until Cloudflare Access and your owner email are configured.</p><ol><li>Enable Cloudflare Access for this Worker's hostname.</li><li>Choose email one-time PIN and allow only your email.</li><li>Copy the team hostname and application audience (AUD) into the Worker's settings.</li><li>Set CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD and JJ_LINKS_OWNER_EMAIL, then redeploy.</li></ol><p><a style="color:#ff7b64" href="https://github.com/jardenberg/jj-links-open/blob/main/docs/DEPLOYMENT.md">Open the step-by-step setup guide and AI helper prompt</a></p><small>JJ Links ${APP_VERSION} · No private inventory is available on this setup page.</small></body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+  return new Response(`<!doctype html><html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Set up JJ Links</title></head>
+<body style="background:#09090b;color:#f7f4ef;font:17px system-ui;max-width:760px;margin:8vh auto;padding:24px;line-height:1.6">
+<h1>Your JJ Links installation is ready to secure.</h1>
+<p>The dashboard stays locked until Cloudflare Access and your owner email are configured.</p>
+<ol><li>Create an Allow policy for only your exact Cloudflare account email.</li>
+<li>Protect this Worker using All traffic and that owner-only policy.</li>
+<li>Copy the application audience (AUD) and team hostname from the Access tab.</li>
+<li>Set CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD and JJ_LINKS_OWNER_EMAIL in Worker settings, then redeploy.</li></ol>
+<p><a style="color:#ff7b64" href="https://github.com/jardenberg/jj-links-open/blob/main/docs/DEPLOYMENT.md">Open the step-by-step setup guide and AI helper prompt</a></p>
+<small>JJ Links ${APP_VERSION} · No private inventory is available on this setup page.</small>
+</body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
 function secured(response: Response) {

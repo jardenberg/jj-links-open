@@ -1,7 +1,7 @@
 # Architecture
 
 ```text
-owner browser → Cloudflare Access email login
+owner browser → Cloudflare Access sign-in
                         ↓ signed JWT
                  Worker verifies owner
                     /           \
