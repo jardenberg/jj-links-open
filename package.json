@@ -1,6 +1,6 @@
 {
   "name": "jj-links-open",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A self-hosted control plane for Cloudflare Bulk Redirects.",
   "license": "MIT",
   "repository": {
@@ -21,7 +21,9 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "privacy-check": "node scripts/check-public-data.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
@@ -33,6 +35,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "@cloudflare/vite-plugin": "1.64.0",
     "@cloudflare/workers-types": "5.20261022.1",
     "@tailwindcss/postcss": "4.2.1",

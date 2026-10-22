@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { errorResponse, json, requireApiUser } from "../../../../lib/api-auth";
-import { updateRedirect } from "../../../../lib/cloudflare";
+import { updateRedirect, recoverWrite } from "../../../../lib/cloudflare";
 import { isAllowedHost } from "../../../../lib/runtime-config";
-import { auditEvent, createConfigSnapshot, requestAlreadyCompleted } from "../../../../lib/store";
+import { auditEvent, createConfigSnapshot } from "../../../../lib/store";
+import { guardedWrite } from "../../../../lib/write-guard";
 
 const schema = z.object({
   requestId: z.string().uuid(),
@@ -25,17 +26,18 @@ export async function PATCH(request: Request) {
     const body = schema.parse(await request.json());
     requestId = body.requestId;
     sourceUrl = body.sourceUrl;
-    if (await requestAlreadyCompleted(requestId)) return json({ ok: true, idempotent: true });
-    let snapshot: Awaited<ReturnType<typeof createConfigSnapshot>> | null = null;
-    await auditEvent({ requestId, actorId: user.userId, actorEmail: user.email, action: "update", sourceUrl, after: body, status: "started" });
-    const result = await updateRedirect(sourceUrl, body, async (items) => {
-      snapshot = await createConfigSnapshot(items, `Before update of ${sourceUrl}`);
-    });
-    const beforeItem = result.beforeItems.find((item) => item.source_url === sourceUrl);
-    await auditEvent({ requestId, actorId: user.userId, actorEmail: user.email, action: "update", sourceUrl, before: { item: beforeItem, snapshot }, after: result.item, operationId: result.operationId, verification: result.verification, status: "completed" });
-    return json({ ok: true, item: result.item, operationId: result.operationId, verification: result.verification, snapshot });
+    const actor = { requestId, actorId: user.userId, actorEmail: user.email, action: "update", sourceUrl };
+    const result = await guardedWrite(requestId, user.userId, { action: "update", ...body }, async (context) => {
+      await auditEvent({ ...actor, after: body, status: "started" });
+      return updateRedirect(sourceUrl, body, context, async (items) => {
+        const snapshot = await createConfigSnapshot(items, `Before update of ${sourceUrl}`);
+        await auditEvent({ ...actor, before: { item: items.find((item) => item.source_url === sourceUrl), snapshot }, after: body, status: "started" });
+      });
+    }, recoverWrite);
+    if (result.outcome === "processing") return json({ ok: true, ...result }, 202);
+    await auditEvent({ ...actor, after: result.item, operationId: result.operationId, verification: result.verification, status: "completed" }).catch(() => console.error("Confirmed redirect update: audit completion needs reconciliation."));
+    return json({ ok: true, ...result });
   } catch (error) {
-    if (user && requestId) await auditEvent({ requestId, actorId: user.userId, actorEmail: user.email, action: "update", sourceUrl, status: "failed", error: error instanceof Error ? error.message : "Unknown failure" }).catch(() => {});
     return errorResponse(error);
   }
 }

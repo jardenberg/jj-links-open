@@ -65,3 +65,14 @@ export const linkMetadata = sqliteTable("link_metadata", {
   notes: text("notes"),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const writeRequests = sqliteTable("write_requests", {
+  id: text("id").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  state: text("state").notNull(),
+  lockKey: text("lock_key").unique(),
+  expectedJson: text("expected_json"),
+  responseJson: text("response_json"),
+  createdAt: text("created_at").notNull(),
+});

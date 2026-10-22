@@ -10,7 +10,7 @@ import { sourceHosts } from "./runtime-config";
 const fallbackItems = parseRedirectCsv(redirectSeedCsv) as RedirectItem[];
 const historical = (historySeed as { links: HistoricalMetric[] }).links;
 
-export async function getDashboardData(): Promise<DashboardPayload> {
+export async function getDashboardData(refreshAnalytics = false): Promise<DashboardPayload> {
   if (!cloudflareConfigured()) {
     return {
       version: APP_VERSION,
@@ -21,11 +21,11 @@ export async function getDashboardData(): Promise<DashboardPayload> {
       historical,
       health: {
         configured: false,
-        enabledRule: true,
+        enabledRule: false,
         ruleName: "Example Bulk Redirect rule",
         listName: "example_redirects",
         listCount: fallbackItems.length,
-        dnsHealthy: true,
+        dnsHealthy: false,
         analyticsWindowStart: null,
         analyticsWindowEnd: null,
         syncedAt: null,
@@ -39,35 +39,38 @@ export async function getDashboardData(): Promise<DashboardPayload> {
     const inventory = await getInventory();
     const health = await getSystemHealth(inventory);
     const syncedAt = new Date().toISOString();
-    try {
-      const liveAnalytics = await getAnalytics();
-      await saveDailyAnalytics(liveAnalytics.daily, syncedAt);
-      await recordSyncRun({ type: "analytics", status: "completed", rows: liveAnalytics.daily.length, windowStart: liveAnalytics.start, windowEnd: liveAnalytics.end });
-    } catch (error) {
-      health.warning = `Redirects are connected, but analytics could not refresh: ${error instanceof Error ? error.message : "unknown error"}`;
-      await recordSyncRun({ type: "analytics", status: "failed", rows: 0, error: health.warning }).catch(() => {});
+    if (refreshAnalytics) {
+      try {
+        const liveAnalytics = await getAnalytics();
+        await saveDailyAnalytics(liveAnalytics.daily, syncedAt);
+        await recordSyncRun({ type: "analytics", status: "completed", rows: liveAnalytics.daily.length, windowStart: liveAnalytics.start, windowEnd: liveAnalytics.end });
+      } catch (error) {
+        health.warning = `Redirects are connected, but analytics could not refresh: ${error instanceof Error ? error.message : "unknown error"}`;
+        await recordSyncRun({ type: "analytics", status: "failed", rows: 0, error: health.warning }).catch(() => {});
+      }
     }
-    const analytics = await readStoredAnalytics();
+    const analytics = await readStoredAnalytics().catch(() => ({ daily: [], byPath: [], start: null, end: null, observedAt: null }));
     health.analyticsWindowStart = analytics.start;
     health.analyticsWindowEnd = analytics.end;
     if (!analytics.daily.length && !health.warning) health.warning = "Live redirects are connected. Analytics are waiting for the first successful collection.";
+    else if (analytics.observedAt && Date.now() - Date.parse(analytics.observedAt) > 36 * 3_600_000) health.warning = "Redirects are connected. Analytics have not been collected in the last 36 hours.";
     await cacheInventory(inventory.items, syncedAt).catch(() => {});
-    return { version: APP_VERSION, sourceHosts: sourceHosts(), inventory: inventory.items, byPath: analytics.byPath, daily: analytics.daily, historical, health };
+    return { version: APP_VERSION, sourceHosts: sourceHosts(), inventory: inventory.items, byPath: analytics.byPath, daily: analytics.daily, historical: [], health };
   } catch (error) {
     const cached = await readCachedInventory().catch(() => null);
     return {
       version: APP_VERSION,
       sourceHosts: sourceHosts(),
-      inventory: cached?.items ?? fallbackItems,
+      inventory: cached?.items ?? [],
       byPath: [],
       daily: [],
-      historical,
+      historical: [],
       health: {
         configured: true,
         enabledRule: false,
         ruleName: null,
         listName: "configured_redirect_list",
-        listCount: cached?.items.length ?? fallbackItems.length,
+        listCount: cached?.items.length ?? 0,
         dnsHealthy: false,
         analyticsWindowStart: null,
         analyticsWindowEnd: null,

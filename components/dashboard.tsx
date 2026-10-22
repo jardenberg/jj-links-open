@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Activity, ArrowUpRight, BarChart3, Check, ChevronRight, CircleAlert,
   Cloud, Copy, Database, ExternalLink, Link2, ListFilter, Plus, RefreshCw,
@@ -66,17 +66,16 @@ export function Dashboard({ initialData, displayName }: { initialData: Dashboard
       .sort((a, b) => (requestMap.get(b.source_url.toLowerCase()) ?? 0) - (requestMap.get(a.source_url.toLowerCase()) ?? 0) || a.source_url.localeCompare(b.source_url));
   }, [data.inventory, hostFilter, query, requestMap]);
 
-  async function refresh() {
+  async function refresh(savedMessage?: string) {
     setBusy(true);
     try {
-      await fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      const response = await fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const payload = await response.json() as { ok: boolean; data?: DashboardPayload; error?: string };
       if (!payload.ok || !payload.data) throw new Error(payload.error || "Refresh failed.");
       setData(payload.data);
-      setToast("Cloudflare state refreshed");
+      setToast(savedMessage ?? "Cloudflare state refreshed");
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Refresh failed");
+      setToast(savedMessage ? `${savedMessage}. Inventory refresh is temporarily unavailable.` : error instanceof Error ? error.message : "Refresh failed");
     } finally {
       setBusy(false);
       window.setTimeout(() => setToast(null), 3500);
@@ -103,7 +102,7 @@ export function Dashboard({ initialData, displayName }: { initialData: Dashboard
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={refresh} disabled={busy} className="button-quiet hidden sm:flex"><RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />Refresh</button>
+            <button onClick={() => void refresh()} disabled={busy} className="button-quiet hidden sm:flex"><RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />Refresh</button>
             <button onClick={() => setCreateOpen(true)} className="button-primary"><Plus className="size-4" />New link</button>
             <div className="ml-1 grid size-9 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-bold text-white/65">{displayName.slice(0, 2).toUpperCase()}</div>
           </div>
@@ -140,8 +139,8 @@ export function Dashboard({ initialData, displayName }: { initialData: Dashboard
       </footer>
 
       {selected && !editOpen && <DetailPanel item={selected} requests={requestMap.get(selected.source_url.toLowerCase()) ?? 0} history={historyMap.get(selected.source_url.toLowerCase())} onClose={() => setSelected(null)} onEdit={() => setEditOpen(true)} />}
-      {createOpen && <LinkForm mode="create" hosts={data.sourceHosts} onClose={() => setCreateOpen(false)} onDone={async (message) => { setCreateOpen(false); setToast(message); await refresh(); }} />}
-      {editOpen && selected && <LinkForm mode="edit" hosts={data.sourceHosts} item={selected} onClose={() => setEditOpen(false)} onDone={async (message) => { setEditOpen(false); setSelected(null); setToast(message); await refresh(); }} />}
+      {createOpen && <LinkForm mode="create" hosts={data.sourceHosts} onClose={() => setCreateOpen(false)} onDone={async (message) => { setCreateOpen(false); setToast(message); await refresh(message); }} />}
+      {editOpen && selected && <LinkForm mode="edit" hosts={data.sourceHosts} item={selected} onClose={() => setEditOpen(false)} onDone={async (message) => { setEditOpen(false); setSelected(null); setToast(message); await refresh(message); }} />}
       {toast && <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-[#18181b] px-5 py-3 text-sm shadow-2xl">{toast}</div>}
     </div>
   );
@@ -153,7 +152,7 @@ function NavButton({ active, onClick, icon, label, badge }: { active: boolean; o
 
 function Overview({ data, chart, total30, historicalTotal, requestMap, onSelect }: { data: DashboardPayload; chart: Array<{ date: string; primary: number; secondary: number }>; total30: number; historicalTotal: number; requestMap: Map<string, number>; onSelect: (item: RedirectItem) => void }) {
   const historyMap = new Map(data.historical.map((row) => [row.source_url.toLowerCase(), row.total_clicks]));
-  const activity = (item: RedirectItem) => requestMap.get(item.source_url.toLowerCase()) ?? historyMap.get(item.source_url.toLowerCase()) ?? 0;
+  const activity = (item: RedirectItem) => requestMap.size ? requestMap.get(item.source_url.toLowerCase()) ?? 0 : historyMap.get(item.source_url.toLowerCase()) ?? 0;
   const active = [...data.inventory].sort((a, b) => activity(b) - activity(a)).slice(0, 7);
   return <>
     <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -169,7 +168,7 @@ function Overview({ data, chart, total30, historicalTotal, requestMap, onSelect 
     </div>
     <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
       <div className="panel p-5 md:p-6">
-        <div className="mb-6 flex items-start justify-between"><div><p className="panel-title">Request activity</p><p className="panel-subtitle">Cloudflare 301 responses across both short domains</p></div><span className="legend"><i className="bg-[#ff5e46]" />{data.sourceHosts[0].split(".")[0]} <i className="ml-3 bg-[#c93b62]" />{data.sourceHosts[1].split(".")[0]}</span></div>
+        <div className="mb-6 flex items-start justify-between"><div><p className="panel-title">Request activity</p><p className="panel-subtitle">Cloudflare redirect responses across both short domains</p></div><span className="legend"><i className="bg-[#ff5e46]" />{data.sourceHosts[0].split(".")[0]} <i className="ml-3 bg-[#c93b62]" />{data.sourceHosts[1].split(".")[0]}</span></div>
         <div className="h-[260px]">
           {chart.length ? <ResponsiveContainer width="100%" height="100%"><AreaChart data={chart}><defs><linearGradient id="goFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#ff5e46" stopOpacity={0.34}/><stop offset="100%" stopColor="#ff5e46" stopOpacity={0}/></linearGradient><linearGradient id="aiFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c93b62" stopOpacity={0.28}/><stop offset="100%" stopColor="#c93b62" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="rgba(255,255,255,.05)" vertical={false}/><XAxis dataKey="date" tickFormatter={(v) => String(v).slice(5)} stroke="rgba(255,255,255,.16)" tick={{ fill: "rgba(255,255,255,.3)", fontSize: 10 }} tickLine={false}/><YAxis stroke="rgba(255,255,255,.16)" tick={{ fill: "rgba(255,255,255,.3)", fontSize: 10 }} tickLine={false} axisLine={false}/><Tooltip contentStyle={{ background: "#18181b", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} labelStyle={{ color: "rgba(255,255,255,.5)" }}/><Area type="monotone" dataKey="primary" name={data.sourceHosts[0]} stroke="#ff5e46" fill="url(#goFill)" strokeWidth={2}/><Area type="monotone" dataKey="secondary" name={data.sourceHosts[1]} stroke="#c93b62" fill="url(#aiFill)" strokeWidth={2}/></AreaChart></ResponsiveContainer> : <EmptyChart />}
         </div>
@@ -217,18 +216,34 @@ function LinkForm({ mode, hosts, item, onClose, onDone }: { mode: "create" | "ed
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [operationPending, setOperationPending] = useState(false);
+  const requestRef = useRef<{ key: string; id: string } | null>(null);
+  const inFlight = useRef(false);
   const targetHasQuery = (() => { try { return Boolean(new URL(targetUrl).search); } catch { return false; } })();
   async function submit() {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true); setError(null);
     try {
-      const body = { requestId: crypto.randomUUID(), host, slug, targetUrl, statusCode: 301, preserveQueryString: !targetHasQuery, comment, ...(mode === "edit" ? { sourceUrl: item!.source_url, confirmedFullListReplacement: confirmed } : {}) };
+      const draft = { host, slug, targetUrl, statusCode: item?.status_code ?? 301, preserveQueryString: targetHasQuery ? false : item?.preserve_query_string ?? true, comment, ...(mode === "edit" ? { sourceUrl: item!.source_url, confirmedFullListReplacement: confirmed } : {}) };
+      const key = JSON.stringify(draft);
+      if (requestRef.current?.key !== key) requestRef.current = { key, id: crypto.randomUUID() };
+      const body = { ...draft, requestId: requestRef.current.id };
       const response = await fetch(mode === "edit" ? "/api/links/update" : "/api/links", { method: mode === "edit" ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const payload = await response.json() as { ok: boolean; error?: string; verification?: { state?: "verified" | "pending" } };
-      if (!payload.ok) throw new Error(payload.error || "Cloudflare did not confirm the change.");
+      const payload = await response.json() as { ok: boolean; error?: string; resetRequest?: boolean; outcome?: "processing" | "confirmed"; message?: string; verification?: { state?: "verified" | "pending" } };
+      if (!payload.ok) {
+        if (payload.resetRequest) requestRef.current = null;
+        throw new Error(payload.error || "Cloudflare did not confirm the change.");
+      }
+      if (payload.outcome === "processing") {
+        setOperationPending(true);
+        setError(payload.message ?? "Checking the saved change. Use Check status before starting another request.");
+        return;
+      }
       const verb = mode === "edit" ? "updated" : "created";
       await onDone(payload.verification?.state === "pending" ? `Redirect ${verb}; public verification is still propagating` : `Redirect ${verb} and publicly verified`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Change failed."); }
-    finally { setBusy(false); }
+    finally { inFlight.current = false; setBusy(false); }
   }
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}><div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#151517] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}><div className="flex items-start justify-between"><div><p className="eyebrow">{mode === "edit" ? "Safe update" : "Create redirect"}</p><h2 className="mt-1 text-2xl font-semibold">{mode === "edit" ? parts?.path : "A new short way"}</h2></div><button className="icon-button" onClick={onClose}><X className="size-4"/></button></div><div className="mt-6 space-y-4"><label className="form-label">Short URL<div className="mt-2 flex overflow-hidden rounded-xl border border-white/10 bg-black/25"><select value={host} onChange={(e) => setHost(e.target.value)} disabled={mode === "edit"} className="border-r border-white/10 bg-transparent px-3 text-sm outline-none">{hosts.map((configuredHost) => <option key={configuredHost} value={configuredHost}>{configuredHost}</option>)}</select><span className="py-3 text-white/25">/</span><input value={slug} onChange={(e) => setSlug(e.target.value)} disabled={mode === "edit"} className="min-w-0 flex-1 bg-transparent px-2 py-3 text-sm outline-none disabled:text-white/40" placeholder="my-link"/></div></label><label className="form-label">Destination<input value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} className="form-input mt-2" placeholder="https://…"/></label><label className="form-label">Note<input value={comment} onChange={(e) => setComment(e.target.value)} className="form-input mt-2" placeholder="Why this link exists"/></label><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 text-xs leading-relaxed text-white/40"><p><strong className="text-white/65">301 permanent</strong> · Incoming query parameters will be {targetHasQuery ? "discarded to preserve the fixed target query" : "preserved"}.</p>{mode === "edit" && <label className="mt-3 flex cursor-pointer items-start gap-3"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 accent-[#ff5e46]"/><span>I understand this safely replaces the complete Cloudflare list after creating an immutable snapshot.</span></label>}</div>{error && <div className="rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-sm text-red-200/80">{error}</div>}</div><div className="mt-6 flex justify-end gap-2"><button className="button-quiet" onClick={onClose}>Cancel</button><button className="button-primary" disabled={busy || !slug || !targetUrl || (mode === "edit" && !confirmed)} onClick={submit}>{busy ? <RefreshCw className="size-4 animate-spin"/> : <Cloud className="size-4"/>}{busy ? "Working…" : mode === "edit" ? "Update and verify" : "Create and verify"}</button></div></div></div>;
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => { if (!busy) onClose(); }}><div role="dialog" aria-modal="true" aria-label={mode === "edit" ? "Update redirect" : "Create redirect"} className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#151517] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}><div className="flex items-start justify-between"><div><p className="eyebrow">{mode === "edit" ? "Safe update" : "Create redirect"}</p><h2 className="mt-1 text-2xl font-semibold">{mode === "edit" ? parts?.path : "A new short way"}</h2></div><button className="icon-button" onClick={() => { if (!busy) onClose(); }}><X className="size-4"/></button></div><div className="mt-6 space-y-4"><label className="form-label">Short URL<div className="mt-2 flex overflow-hidden rounded-xl border border-white/10 bg-black/25"><select value={host} onChange={(e) => setHost(e.target.value)} disabled={busy || operationPending || mode === "edit"} className="border-r border-white/10 bg-transparent px-3 text-sm outline-none">{hosts.map((configuredHost) => <option key={configuredHost} value={configuredHost}>{configuredHost}</option>)}</select><span className="py-3 text-white/25">/</span><input value={slug} onChange={(e) => setSlug(e.target.value)} disabled={busy || operationPending || mode === "edit"} className="min-w-0 flex-1 bg-transparent px-2 py-3 text-sm outline-none disabled:text-white/40" placeholder="my-link"/></div></label><label className="form-label">Destination<input disabled={busy || operationPending} value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} className="form-input mt-2" placeholder="https://…"/></label><label className="form-label">Note<input disabled={busy || operationPending} value={comment} onChange={(e) => setComment(e.target.value)} className="form-input mt-2" placeholder="Why this link exists"/></label><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 text-xs leading-relaxed text-white/40"><p><strong className="text-white/65">{item?.status_code ?? 301} redirect</strong> · Incoming query parameters will be {targetHasQuery || item?.preserve_query_string === false ? "discarded" : "preserved"}.</p>{mode === "edit" && <label className="mt-3 flex cursor-pointer items-start gap-3"><input type="checkbox" disabled={busy || operationPending} checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 accent-[#ff5e46]"/><span>I understand this safely replaces the complete Cloudflare list after creating an immutable snapshot.</span></label>}</div>{error && <div className="rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-sm text-red-200/80">{error}</div>}</div><div className="mt-6 flex justify-end gap-2"><button className="button-quiet" onClick={() => { if (!busy) onClose(); }}>Cancel</button><button className="button-primary" disabled={busy || !slug || !targetUrl || (mode === "edit" && !confirmed)} onClick={submit}>{busy ? <RefreshCw className="size-4 animate-spin"/> : <Cloud className="size-4"/>}{busy ? "Working…" : operationPending ? "Check status" : mode === "edit" ? "Update and verify" : "Create and verify"}</button></div></div></div>;
 }

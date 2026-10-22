@@ -37,11 +37,15 @@ export async function saveDailyAnalytics(rows: Array<DailyMetric & { sourceUrl: 
   for (let offset = 0; offset < statements.length; offset += 50) await env.DB.batch(statements.slice(offset, offset + 50));
 }
 
-export async function readStoredAnalytics(): Promise<{ daily: DailyMetric[]; byPath: Array<{ sourceUrl: string; host: string; path: string; requests: number }>; start: string | null; end: string | null }> {
-  if (!env.DB) return { daily: [], byPath: [], start: null, end: null };
+export async function readStoredAnalytics(days = 30, now = new Date()): Promise<{ daily: DailyMetric[]; byPath: Array<{ sourceUrl: string; host: string; path: string; requests: number }>; start: string | null; end: string | null; observedAt: string | null }> {
+  if (!env.DB) return { daily: [], byPath: [], start: null, end: null, observedAt: null };
+  const cutoff = new Date(now);
+  cutoff.setUTCDate(cutoff.getUTCDate() - days + 1);
+  const start = cutoff.toISOString().slice(0, 10);
+  const end = now.toISOString().slice(0, 10);
   const result = await env.DB.prepare(
-    "SELECT date, source_url, host, path, requests FROM analytics_daily ORDER BY date ASC, source_url ASC",
-  ).all<{ date: string; source_url: string; host: string; path: string; requests: number }>();
+    "SELECT date, source_url, host, path, requests, observed_at FROM analytics_daily WHERE date >= ? AND date <= ? ORDER BY date ASC, source_url ASC",
+  ).bind(start, end).all<{ date: string; source_url: string; host: string; path: string; requests: number; observed_at: string }>();
   const daily = result.results.map((row) => ({ date: row.date, sourceUrl: row.source_url, host: row.host, path: row.path, requests: row.requests }));
   const totals = new Map<string, { sourceUrl: string; host: string; path: string; requests: number }>();
   for (const row of daily) {
@@ -50,7 +54,8 @@ export async function readStoredAnalytics(): Promise<{ daily: DailyMetric[]; byP
     totals.set(row.sourceUrl, current);
   }
   const dates = daily.map((row) => row.date).sort();
-  return { daily, byPath: [...totals.values()].sort((a, b) => b.requests - a.requests), start: dates[0] ?? null, end: dates.at(-1) ?? null };
+  const observedAt = result.results.map((row) => row.observed_at).sort().at(-1) ?? null;
+  return { daily, byPath: [...totals.values()].sort((a, b) => b.requests - a.requests), start: dates[0] ?? null, end: dates.at(-1) ?? null, observedAt };
 }
 
 export async function recordSyncRun(input: { type: string; status: string; rows: number; windowStart?: string | null; windowEnd?: string | null; error?: string | null }) {
@@ -90,7 +95,7 @@ export async function auditEvent(input: {
     `INSERT INTO audit_events
       (id, request_id, actor_id, actor_email, action, source_url, before_json, after_json, operation_id, verification_json, status, error, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(request_id) DO UPDATE SET after_json=excluded.after_json, operation_id=excluded.operation_id,
+     ON CONFLICT(request_id) DO UPDATE SET before_json=COALESCE(excluded.before_json, audit_events.before_json), after_json=excluded.after_json, operation_id=excluded.operation_id,
        verification_json=excluded.verification_json, status=excluded.status, error=excluded.error`,
   ).bind(
     crypto.randomUUID(), input.requestId, input.actorId, input.actorEmail, input.action, input.sourceUrl,
