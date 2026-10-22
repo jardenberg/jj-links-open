@@ -111,4 +111,4 @@ Issues and pull requests are welcome. Please read [Contributing](CONTRIBUTING.md
 
 [MIT](LICENSE). Use it, change it, ship it and make it yours.
 
-Created by [Joakim Jardenberg](https://github.com/jardenberg) as a small gift to everyone who wants their links back under their own control.
+Created by the JJ AI Team, with some help from [Joakim Jardenberg](https://github.com/jardenberg), as a small gift to everyone who wants their links back under their own control.

@@ -1,6 +1,6 @@
 {
   "name": "jj-links-open",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A self-hosted control plane for Cloudflare Bulk Redirects.",
   "license": "MIT",
   "repository": {

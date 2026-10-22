@@ -2,6 +2,15 @@
 
 All notable changes to JJ Links Open are recorded here. Newest releases come first.
 
+## [1.0.1] - 2026-10-22
+
+### Fixed
+
+- Retry public redirect verification with bounded exponential backoff after a confirmed Cloudflare write.
+- Treat successful Cloudflare list readback as creation or update success even while edge propagation is pending.
+- Show a truthful “verification is still propagating” confirmation instead of a false failure.
+- Close the create/edit flow after confirmed readback, preventing accidental duplicate retries; server-side idempotency and collision checks remain in force.
+
 ## [1.0.0] - 2026-10-22
 
 ### Added

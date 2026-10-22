@@ -223,9 +223,10 @@ function LinkForm({ mode, hosts, item, onClose, onDone }: { mode: "create" | "ed
     try {
       const body = { requestId: crypto.randomUUID(), host, slug, targetUrl, statusCode: 301, preserveQueryString: !targetHasQuery, comment, ...(mode === "edit" ? { sourceUrl: item!.source_url, confirmedFullListReplacement: confirmed } : {}) };
       const response = await fetch(mode === "edit" ? "/api/links/update" : "/api/links", { method: mode === "edit" ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const payload = await response.json() as { ok: boolean; error?: string };
+      const payload = await response.json() as { ok: boolean; error?: string; verification?: { state?: "verified" | "pending" } };
       if (!payload.ok) throw new Error(payload.error || "Cloudflare did not confirm the change.");
-      await onDone(mode === "edit" ? "Redirect updated and publicly verified" : "Redirect created and publicly verified");
+      const verb = mode === "edit" ? "updated" : "created";
+      await onDone(payload.verification?.state === "pending" ? `Redirect ${verb}; public verification is still propagating` : `Redirect ${verb} and publicly verified`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Change failed."); }
     finally { setBusy(false); }
   }

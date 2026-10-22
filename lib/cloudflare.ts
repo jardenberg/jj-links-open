@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import type { DailyMetric, PathMetric, RedirectInput, RedirectItem, SystemHealth } from "./types";
 import { isAllowedHost, sourceHosts } from "./runtime-config";
+import { retryVerification } from "./verification-policy.mjs";
 
 const API_BASE = "https://api.cloudflare.com/client/v4";
 
@@ -207,7 +208,7 @@ export async function createRedirect(input: RedirectInput): Promise<{ item: Redi
   const after = await getInventory();
   const created = after.items.find((item) => item.source_url === normalized.source_url);
   if (!created || after.listCount !== before.listCount + 1) throw new Error("Cloudflare completed the operation, but the expected item/count was not observed.");
-  const verification = await verifyPublic(created, after.items);
+  const verification = await verifyPublicWithRetry(created, after.items);
   return { item: created, operationId: operation.operation_id, verification };
 }
 
@@ -230,7 +231,7 @@ export async function updateRedirect(
   const after = await getInventory();
   const updated = after.items.find((item) => item.source_url === sourceUrl);
   if (!updated || after.listCount !== before.listCount || updated.target_url !== replacement.target_url) throw new Error("The full-list reconciliation did not match the intended update.");
-  const verification = await verifyPublic(updated, after.items);
+  const verification = await verifyPublicWithRetry(updated, after.items);
   return { item: updated, operationId: operation.operation_id, beforeItems: before.items, verification };
 }
 
@@ -245,4 +246,15 @@ export async function verifyPublic(item: RedirectItem, inventory: RedirectItem[]
   const regression = await fetch(regressionUrl, { redirect: "manual", cache: "no-store" });
   if (![301, 302, 307, 308].includes(regression.status) || !regression.headers.get("location")) throw new Error(`Cross-host regression check failed for ${regressionUrl}.`);
   return { checkedAt: new Date().toISOString(), status: response.status, location, regression: { url: regressionUrl, status: regression.status } };
+}
+
+async function verifyPublicWithRetry(item: RedirectItem, inventory: RedirectItem[]) {
+  const outcome = await retryVerification(() => verifyPublic(item, inventory));
+  if (outcome.state === "verified") return { state: "verified" as const, attempts: outcome.attempts, ...outcome.value };
+  return {
+    state: "pending" as const,
+    attempts: outcome.attempts,
+    checkedAt: new Date().toISOString(),
+    lastError: outcome.lastError,
+  };
 }
