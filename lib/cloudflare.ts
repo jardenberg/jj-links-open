@@ -5,10 +5,11 @@ import { retryVerification } from "./verification-policy.mjs";
 import { canonical, normalizeInput, sameInventory, sourceUrl, updatedItem } from "./redirect-model";
 import { ApiError, WriteRejectedError, WriteUncertainError } from "./errors";
 import type { WriteContext } from "./write-guard";
+import { connectionIds } from "./connection";
 
 const API_BASE = "https://api.cloudflare.com/client/v4";
 type Inventory = { items: RedirectItem[]; listName: string; listCount: number };
-type ExpectedWrite = { items: RedirectItem[]; source: string };
+type ExpectedWrite = { items: RedirectItem[]; source?: string; kind?: "batch"; backupId?: string };
 type AnalyticsRow = { count: number; dimensions: { date: string; clientRequestHTTPHost: string; clientRequestPath: string } };
 type CloudflarePayload = {
   success?: boolean; result?: unknown; errors?: Array<{ message?: string }>;
@@ -17,7 +18,7 @@ type CloudflarePayload = {
 };
 
 export function cloudflareConfigured(): boolean {
-  return Boolean(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_ZONE_ID && env.CLOUDFLARE_LIST_ID && env.CLOUDFLARE_RULESET_ID);
+  return Boolean(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_ZONE_ID);
 }
 
 async function cfResponse(path: string, init: RequestInit = {}) {
@@ -36,7 +37,7 @@ async function cfResponse(path: string, init: RequestInit = {}) {
   return payload;
 }
 
-async function cfRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function cfRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await cfResponse(path, init)).result as T;
 }
 
@@ -52,8 +53,9 @@ function toRedirectItem(item: Record<string, unknown>): RedirectItem {
   };
 }
 
-export async function getInventory(): Promise<Inventory> {
-  const listPath = `/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rules/lists/${env.CLOUDFLARE_LIST_ID}`;
+export async function getInventory(selectedListId?: string): Promise<Inventory> {
+  const listId = selectedListId ?? (await connectionIds()).listId;
+  const listPath = `/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rules/lists/${listId}`;
   const list = await cfRequest<{ name: string; num_items: number }>(listPath);
   const items: RedirectItem[] = [];
   const seenCursors = new Set<string>();
@@ -111,7 +113,8 @@ async function probe(item: RedirectItem) {
 }
 
 export async function getSystemHealth(inventory: Inventory): Promise<SystemHealth> {
-  const ruleset = await cfRequest<{ rules?: Array<{ enabled?: boolean; description?: string; action_parameters?: { from_list?: { name?: string } } }> }>(`/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rulesets/${env.CLOUDFLARE_RULESET_ID}`);
+  const { rulesetId } = await connectionIds();
+  const ruleset = await cfRequest<{ rules?: Array<{ enabled?: boolean; description?: string; action_parameters?: { from_list?: { name?: string } } }> }>(`/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rulesets/${rulesetId}`);
   const rule = ruleset.rules?.find((candidate) => candidate.action_parameters?.from_list?.name === inventory.listName);
   const representatives = sourceHosts().map((host) => inventory.items.find((item) => sourceUrl(item.source_url).hostname === host));
   const results = await Promise.allSettled(representatives.map((item) => item ? probe(item) : Promise.reject(new Error("No representative redirect"))));
@@ -141,7 +144,8 @@ async function pollOperation(operationId: string): Promise<void> {
 }
 
 async function submit(method: string, items: RedirectItem[]) {
-  const result = await cfRequest<{ operation_id: string }>(`/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rules/lists/${env.CLOUDFLARE_LIST_ID}/items`, { method, body: JSON.stringify(items.map(apiItem)) });
+  const { listId } = await connectionIds();
+  const result = await cfRequest<{ operation_id: string }>(`/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/rules/lists/${listId}/items`, { method, body: JSON.stringify(items.map(apiItem)) });
   await pollOperation(result.operation_id);
   return result.operation_id;
 }
@@ -149,6 +153,7 @@ async function submit(method: string, items: RedirectItem[]) {
 async function confirm(expected: ExpectedWrite, operationId: string) {
   const after = await getInventory();
   if (!sameInventory(after.items, expected.items)) throw new WriteUncertainError("Cloudflare readback does not yet match the complete intended list.");
+  if (expected.kind === "batch") return { item: null, operationId, backupId: expected.backupId, verification: { state: "pending" as const, scope: "batch" } };
   const item = after.items.find((candidate) => candidate.source_url === expected.source)!;
   const verification = await verifyPublicWithRetry(item, after.items);
   return { item, operationId, verification };
@@ -158,6 +163,7 @@ export async function recoverWrite(value: unknown) {
   const expected = value as ExpectedWrite;
   const after = await getInventory();
   if (!sameInventory(after.items, expected.items)) return null;
+  if (expected.kind === "batch") return { item: null, operationId: "reconciled-from-readback", backupId: expected.backupId, verification: { state: "pending" as const, scope: "batch" } };
   const item = after.items.find((candidate) => candidate.source_url === expected.source)!;
   return { item, operationId: "reconciled-from-readback", verification: await verifyPublicWithRetry(item, after.items) };
 }
@@ -189,6 +195,17 @@ export async function verifyPublic(item: RedirectItem, inventory: RedirectItem[]
   const other = inventory.find((candidate) => sourceUrl(candidate.source_url).hostname !== sourceUrl(item.source_url).hostname && sourceHosts().includes(sourceUrl(candidate.source_url).hostname));
   const regression = other ? await probe(other) : null;
   return { checkedAt: new Date().toISOString(), ...result, regression };
+}
+
+export async function replaceInventory(baseline: RedirectItem[], candidate: RedirectItem[], context: WriteContext, snapshot: (items: RedirectItem[]) => Promise<{ id: string }>) {
+  const before = await getInventory();
+  if (!sameInventory(before.items, baseline)) throw new ApiError(409, "Your live list changed after this preview. Make a new preview before importing.");
+  if (sameInventory(baseline, candidate)) return { item: null, operationId: "no-change", verification: { state: "verified" as const }, backupId: undefined };
+  const backup = await snapshot(before.items);
+  if (!sameInventory((await getInventory()).items, baseline)) throw new ApiError(409, "The list changed while preparing its backup. Make a new preview.");
+  const expected = { items: candidate, kind: "batch" as const, backupId: backup.id };
+  await context.prepare(expected);
+  return confirm(expected, await submit("PUT", candidate));
 }
 
 async function verifyPublicWithRetry(item: RedirectItem, inventory: RedirectItem[]) {

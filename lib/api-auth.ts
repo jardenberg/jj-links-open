@@ -1,10 +1,10 @@
-import { getChatGPTUser } from "../app/chatgpt-auth";
+import { getUser } from "./auth";
 import { authorizeOwner } from "./owner";
 import { ApiError } from "./errors";
 export { ApiError } from "./errors";
 
 export async function requireApiUser(request: Request, write = false) {
-  const user = authorizeOwner(await getChatGPTUser());
+  const user = authorizeOwner(getUser(request));
   if (write) {
     const origin = request.headers.get("origin");
     if (!origin || origin !== new URL(request.url).origin) throw new ApiError(403, "Request origin was not accepted.");

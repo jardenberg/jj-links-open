@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { DashboardPayload, RedirectItem } from "../lib/types";
+import { TransferPanel } from "./transfer-panel";
+import { ConnectionPanel } from "./connection-panel";
 
 type Tab = "overview" | "links" | "system";
 
@@ -37,6 +39,8 @@ export function Dashboard({ initialData, displayName }: { initialData: Dashboard
   const [hostFilter, setHostFilter] = useState("all");
   const [selected, setSelected] = useState<RedirectItem | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [connectionOpen, setConnectionOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -92,19 +96,21 @@ export function Dashboard({ initialData, displayName }: { initialData: Dashboard
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_78%_4%,rgba(255,91,57,0.12),transparent_29%),radial-gradient(circle_at_12%_88%,rgba(190,30,45,0.08),transparent_27%)]" />
       <header className="sticky top-0 z-30 border-b border-white/[0.07] bg-[#09090b]/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1560px] items-center justify-between px-5 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-[#ff6649] to-[#c51f38] shadow-[0_0_30px_rgba(255,78,58,0.2)]">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-[#ff6649] to-[#c51f38] shadow-[0_0_30px_rgba(255,78,58,0.2)] max-[360px]:hidden">
               <Link2 className="size-4.5 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2"><span className="font-semibold tracking-tight">JJ Links</span><span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/45">OPEN SOURCE</span></div>
-              <p className="text-[11px] text-white/35">The short way to everything</p>
+              <div className="flex items-center gap-2 whitespace-nowrap"><span className="font-semibold tracking-tight">JJ Links</span><span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/45">{data.health.configured ? "PRIVATE" : "SAMPLE"}</span></div>
+              <p className="hidden text-[11px] text-white/35 sm:block">The short way to everything</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => setConnectionOpen(true)} className="button-quiet hidden sm:flex">Connect Cloudflare</button>
+            <button aria-label="Import and export redirects" onClick={() => setTransferOpen(true)} className="button-quiet"><span className="sm:hidden">CSV</span><span className="hidden sm:inline">Import / export</span></button>
             <button onClick={() => void refresh()} disabled={busy} className="button-quiet hidden sm:flex"><RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />Refresh</button>
-            <button onClick={() => setCreateOpen(true)} className="button-primary"><Plus className="size-4" />New link</button>
-            <div className="ml-1 grid size-9 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-bold text-white/65">{displayName.slice(0, 2).toUpperCase()}</div>
+            <button aria-label="New link" onClick={() => setCreateOpen(true)} className="button-primary whitespace-nowrap"><Plus className="size-4" /><span className="sm:hidden">New</span><span className="hidden sm:inline">New link</span></button>
+            <div className="ml-1 hidden size-9 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-bold text-white/65 sm:grid">{displayName.slice(0, 2).toUpperCase()}</div>
           </div>
         </div>
       </header>
@@ -125,6 +131,10 @@ export function Dashboard({ initialData, displayName }: { initialData: Dashboard
           <div className="mb-6 flex gap-1 rounded-xl border border-white/[0.07] bg-white/[0.025] p-1 lg:hidden">
             {(["overview", "links", "system"] as Tab[]).map((item) => <button key={item} onClick={() => setTab(item)} className={`flex-1 rounded-lg px-3 py-2 text-sm capitalize ${tab === item ? "bg-white/10 text-white" : "text-white/45"}`}>{item}</button>)}
           </div>
+          <div className="mb-5 flex flex-wrap gap-2 sm:hidden">
+            <button onClick={() => setConnectionOpen(true)} className="button-quiet"><Cloud className="size-4"/>Connect Cloudflare</button>
+            <button onClick={() => void refresh()} disabled={busy} className="button-quiet"><RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`}/>Refresh</button>
+          </div>
 
           {tab === "overview" && <Overview data={data} chart={chart} total30={total30} historicalTotal={historicalTotal} requestMap={requestMap} onSelect={(item) => setSelected(item)} />}
           {tab === "links" && (
@@ -141,6 +151,8 @@ export function Dashboard({ initialData, displayName }: { initialData: Dashboard
       {selected && !editOpen && <DetailPanel item={selected} requests={requestMap.get(selected.source_url.toLowerCase()) ?? 0} history={historyMap.get(selected.source_url.toLowerCase())} onClose={() => setSelected(null)} onEdit={() => setEditOpen(true)} />}
       {createOpen && <LinkForm mode="create" hosts={data.sourceHosts} onClose={() => setCreateOpen(false)} onDone={async (message) => { setCreateOpen(false); setToast(message); await refresh(message); }} />}
       {editOpen && selected && <LinkForm mode="edit" hosts={data.sourceHosts} item={selected} onClose={() => setEditOpen(false)} onDone={async (message) => { setEditOpen(false); setSelected(null); setToast(message); await refresh(message); }} />}
+      {transferOpen && <TransferPanel onClose={() => setTransferOpen(false)} onDone={async (message) => { setTransferOpen(false); setToast(message); await refresh(message); }}/>}
+      {connectionOpen && <ConnectionPanel onClose={() => setConnectionOpen(false)} onDone={async (message) => { setConnectionOpen(false); setToast(message); await refresh(message); }}/>}
       {toast && <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-[#18181b] px-5 py-3 text-sm shadow-2xl">{toast}</div>}
     </div>
   );
@@ -161,7 +173,7 @@ function Overview({ data, chart, total30, historicalTotal, requestMap, onSelect 
     </div>
     {data.health.warning && <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-400/20 bg-amber-300/[0.06] p-4 text-sm text-amber-100/75"><CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-300" /><span>{data.health.warning}</span></div>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric label="Live redirects" value={number(data.inventory.length)} detail={data.sourceHosts.map((host) => `${data.inventory.filter((x) => sourceParts(x.source_url).host === host).length} ${host.split(".")[0]}`).join(" · ")} icon={<Link2 />} />
+      <Metric label={data.health.configured ? "Live redirects" : "Sample redirects"} value={number(data.inventory.length)} detail={data.sourceHosts.map((host) => `${data.inventory.filter((x) => sourceParts(x.source_url).host === host).length} ${host.split(".")[0]}`).join(" · ")} icon={<Link2 />} />
       <Metric label="Requests · 30 days" value={number(total30)} detail={data.health.analyticsWindowStart ? `${shortDate(data.health.analyticsWindowStart)} onwards` : "Awaiting live analytics"} icon={<Activity />} />
       <Metric label="Historical requests" value={number(historicalTotal)} detail="Optional legacy import" icon={<Database />} />
       <Metric label="System state" value={data.health.enabledRule && data.health.dnsHealthy ? "Healthy" : "Check"} detail={`Synced ${shortDate(data.health.syncedAt)}`} icon={<ShieldCheck />} good={data.health.enabledRule && data.health.dnsHealthy} />
@@ -182,7 +194,7 @@ function Metric({ label, value, detail, icon, good }: { label: string; value: st
   return <div className="panel p-5"><div className="flex items-center justify-between"><span className="text-xs text-white/38">{label}</span><span className={`grid size-8 place-items-center rounded-lg [&>svg]:size-4 ${good ? "bg-emerald-400/10 text-emerald-300" : "bg-white/[0.05] text-white/40"}`}>{icon}</span></div><div className="mt-4 text-3xl font-semibold tracking-[-0.04em]">{value}</div><p className="mt-1 text-[11px] text-white/28">{detail}</p></div>;
 }
 
-function EmptyChart() { return <div className="grid h-full place-items-center rounded-xl border border-dashed border-white/10 bg-white/[0.015] text-center"><div><Sparkles className="mx-auto mb-3 size-5 text-white/25"/><p className="text-sm text-white/45">Analytics will appear after the first live sync.</p><p className="mt-1 text-xs text-white/25">The redirect engine is already healthy.</p></div></div>; }
+function EmptyChart() { return <div className="grid h-full place-items-center rounded-xl border border-dashed border-white/10 bg-white/[0.015] text-center"><div><Sparkles className="mx-auto mb-3 size-5 text-white/25"/><p className="text-sm text-white/45">Connect Cloudflare and refresh to collect analytics.</p><p className="mt-1 text-xs text-white/25">Metrics are request counts, not unique people.</p></div></div>; }
 
 function LinksView({ items, hosts, query, setQuery, hostFilter, setHostFilter, requestMap, historyMap, onSelect, onEdit }: { items: RedirectItem[]; hosts: [string, string]; query: string; setQuery: (v: string) => void; hostFilter: string; setHostFilter: (v: string) => void; requestMap: Map<string, number>; historyMap: Map<string, DashboardPayload["historical"][number]>; onSelect: (v: RedirectItem) => void; onEdit: (v: RedirectItem) => void }) {
   return <><div className="mb-6"><p className="eyebrow">Inventory</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Every path has a destination.</h1></div><div className="panel overflow-hidden"><div className="flex flex-col gap-3 border-b border-white/[0.06] p-4 md:flex-row md:items-center"><div className="relative flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/25"/><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search source, destination or note…" className="search-input"/></div><div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-1">{["all", ...hosts].map((item) => <button key={item} onClick={() => setHostFilter(item)} className={`filter-button ${hostFilter === item ? "filter-active" : ""}`}>{item === "all" ? item : item.split(".")[0]}</button>)}</div><span className="flex items-center gap-2 text-xs text-white/30"><ListFilter className="size-3.5"/>{items.length} shown</span></div><div className="overflow-x-auto"><table className="link-table"><thead><tr><th>Short URL</th><th>Destination</th><th className="text-right">30d</th><th className="text-right">Historical</th><th /></tr></thead><tbody>{items.map((item) => { const parts = sourceParts(item.source_url); const recent = requestMap.get(item.source_url.toLowerCase()) ?? 0; const history = historyMap.get(item.source_url.toLowerCase()); return <tr key={item.id} onClick={() => onSelect(item)}><td><div className="flex items-center gap-3"><span className={`domain-dot ${parts.host === hosts[0] ? "bg-[#ff5e46]" : "bg-[#c93b62]"}`}/><div><strong>{parts.path}</strong><small>{parts.host}</small></div></div></td><td><div className="target-cell"><span>{targetHost(item.target_url)}</span><small>{item.target_url}</small></div></td><td className="metric-cell">{number(recent)}</td><td className="metric-cell text-white/42">{history ? number(history.total_clicks) : "—"}</td><td><button onClick={(event) => { event.stopPropagation(); onEdit(item); }} className="icon-button" aria-label={`Edit ${item.source_url}`}><Settings2 className="size-3.5"/></button></td></tr>; })}</tbody></table></div>{items.length === 0 && <div className="p-12 text-center text-sm text-white/35">No links match that filter.</div>}</div></>;

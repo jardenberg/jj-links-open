@@ -25,9 +25,9 @@ test("release surfaces agree on version", async () => {
   const packageJson = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
   const versionSource = await readFile(new URL("lib/version.ts", root), "utf8");
   const changelog = await readFile(new URL("CHANGELOG.md", root), "utf8");
-  assert.equal(packageJson.version, "1.0.2");
-  assert.match(versionSource, /APP_VERSION = "1\.0\.2"/);
-  assert.match(changelog, /\[1\.0\.2\] - 2026-10-22/);
+  assert.equal(packageJson.version, "1.1.0");
+  assert.match(versionSource, /APP_VERSION = "1\.1\.0"/);
+  assert.match(changelog, /\[1\.1\.0\] - 2026-10-22/);
 });
 
 test("overview headline matches the released copy", async () => {
