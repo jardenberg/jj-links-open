@@ -76,3 +76,24 @@ export const writeRequests = sqliteTable("write_requests", {
   responseJson: text("response_json"),
   createdAt: text("created_at").notNull(),
 });
+
+export const importPreviews = sqliteTable("import_previews", {
+  id: text("id").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  mode: text("mode").notNull(),
+  baselineJson: text("baseline_json").notNull(),
+  candidateJson: text("candidate_json").notNull(),
+  changesJson: text("changes_json").notNull(),
+  verificationJson: text("verification_json").notNull().default("{}"),
+  state: text("state").notNull().default("preview"),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const connections = sqliteTable("connections", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  zoneId: text("zone_id").notNull(),
+  listId: text("list_id").notNull(),
+  rulesetId: text("ruleset_id").notNull(),
+});

@@ -2,6 +2,34 @@
 
 All notable changes to JJ Links Open are recorded here. Newest releases come first.
 
+## [1.1.0] - 2026-10-22
+
+### Added
+
+- Standard Cloudflare Workers, D1 and Access deployment, with owner-only Cloudflare sign-in and a Deploy to Cloudflare entry point.
+- Application verification of Access signatures, issuer, audience, expiry and the configured owner on every request.
+- CSV download, merge preview and complete-backup restore with explicit review, a typed restore confirmation and a pre-import snapshot.
+- Stale-preview protection, idempotent bulk writes, downloadable pre-import backups and paged public verification.
+- A read-only local sample that needs no credentials.
+- A named-list connection chooser that checks the enabling rule and configured short domains without changing Cloudflare configuration.
+
+### Changed
+
+- Replace the Sites-specific runtime and authentication adapter with a standard Worker API and React/Vite client.
+- Keep the private operational edition separate at 1.0.2.
+- Use a patched esbuild throughout the build toolchain.
+
+### Fixed
+
+- Resume an interrupted CSV import using its original saved request, including a response lost after Cloudflare confirmed it.
+- Keep list selection stable throughout an import and reject previews that exceed D1's complete-row size limit.
+- Keep setup, CSV and creation controls usable on narrow phone screens.
+- Preserve scheme-qualified and root source URLs through display, copying and editing, and allow an empty-list backup only through explicitly confirmed restore.
+
+### Upgrade note
+
+- This public edition now requires Cloudflare Access configuration. Existing Sites installations should stay on their established private code or the 1.0.2 tag until deliberately migrated.
+
 ## [1.0.2] - 2026-10-22
 
 ### Security

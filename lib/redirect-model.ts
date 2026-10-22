@@ -5,6 +5,11 @@ export function sourceUrl(source: string): URL {
   return new URL(/^https?:\/\//i.test(source) ? source : `https://${source}`);
 }
 
+export function metricKey(source: string): string {
+  const url = sourceUrl(source);
+  return `${url.host}${url.pathname}`.toLowerCase();
+}
+
 export function canonical(item: RedirectItem) {
   return {
     source_url: item.source_url,
@@ -23,11 +28,11 @@ export function sameInventory(actual: RedirectItem[], expected: RedirectItem[]):
   return serialize(actual) === serialize(expected);
 }
 
-export function normalizeInput(input: RedirectInput, hosts: string[]): RedirectItem {
+export function normalizeInput(input: RedirectInput, hosts: string[], allowRoot = false): RedirectItem {
   const host = input.host.trim().toLowerCase();
   if (!hosts.includes(host)) throw new ApiError(400, "Source host is not configured.");
   const slug = input.slug.trim().replace(/^\/+/, "");
-  if (!slug || /[?#\\\s\x00-\x1f\x7f]/.test(slug)) throw new ApiError(400, "Enter a path without spaces, a query, fragment or backslash.");
+  if ((!slug && !allowRoot) || /[?#\\\s\x00-\x1f\x7f]/.test(slug)) throw new ApiError(400, "Enter a path without spaces, a query, fragment or backslash.");
   const parsed = new URL(`https://${host}/${slug}`);
   if (parsed.host !== host || parsed.pathname !== `/${slug}`) throw new ApiError(400, "Use an already encoded path without dot segments.");
   const target = new URL(input.targetUrl);
@@ -44,7 +49,7 @@ export function normalizeInput(input: RedirectInput, hosts: string[]): RedirectI
 }
 
 export function updatedItem(before: RedirectItem, input: RedirectInput, hosts: string[]) {
-  const normalized = normalizeInput(input, hosts);
+  const normalized = normalizeInput(input, hosts, true);
   const beforeUrl = sourceUrl(before.source_url);
   if (`${beforeUrl.host}${beforeUrl.pathname}` !== normalized.source_url) throw new ApiError(400, "Changing the source path is not supported. Create a new redirect instead.");
   return {

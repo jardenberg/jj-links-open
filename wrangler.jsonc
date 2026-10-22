@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "jj-links-open",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "jj-links-open",
+    "database_id": "00000000-0000-4000-8000-000000000000",
+    "migrations_dir": "drizzle"
+  }],
+  "observability": { "enabled": true }
+}

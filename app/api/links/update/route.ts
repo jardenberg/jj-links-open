@@ -9,7 +9,7 @@ const schema = z.object({
   requestId: z.string().uuid(),
   sourceUrl: z.string().min(1),
   host: z.string().refine(isAllowedHost, "Source host is not configured."),
-  slug: z.string().min(1).max(200),
+  slug: z.string().max(200),
   targetUrl: z.string().url().max(4000),
   statusCode: z.union([z.literal(301), z.literal(302), z.literal(307), z.literal(308)]).optional(),
   preserveQueryString: z.boolean().optional(),

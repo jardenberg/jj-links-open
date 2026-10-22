@@ -23,4 +23,5 @@ jobs:
       - run: npm run privacy-check
       - run: npm run lint
       - run: npm run build
-      - run: npm audit --omit=dev --audit-level=high
+      - run: npx wrangler deploy --dry-run
+      - run: npm audit --audit-level=high

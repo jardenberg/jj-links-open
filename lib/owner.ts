@@ -1,8 +1,8 @@
 import { env } from "cloudflare:workers";
 import { ApiError } from "./errors";
-import type { ChatGPTUser } from "../app/chatgpt-auth";
+import type { AppUser } from "./auth";
 
-export function authorizeOwner(user: ChatGPTUser | null): ChatGPTUser {
+export function authorizeOwner(user: AppUser | null): AppUser {
   if (!user) throw new ApiError(401, "Sign in is required.");
   const ownerEmail = env.JJ_LINKS_OWNER_EMAIL?.trim().toLowerCase();
   if (env.CLOUDFLARE_API_TOKEN && !ownerEmail) {
