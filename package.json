@@ -47,7 +47,7 @@
     "drizzle-kit": "0.31.11",
     "eslint": "9.39.4",
     "eslint-config-next": "16.4.2",
-    "json-rpc-2.0": "1.7.1",
+    "json-rpc-2.0": "1.8.1",
     "raw-body": "3.0.2",
     "react-server-dom-webpack": "19.3.1",
     "tailwindcss": "4.2.1",
