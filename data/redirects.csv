@@ -1,0 +1,5 @@
+"source_url","target_url","status_code","include_subdomains","subpath_matching","preserve_path_suffix","preserve_query_string","id","comment"
+"go.example.com/docs","https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/","301","false","false","false","true","sample-go-docs","Cloudflare Bulk Redirects documentation"
+"go.example.com/project","https://github.com/jardenberg/jj-links-open","301","false","false","false","true","sample-go-project","Project repository"
+"ai.example.com/guide","https://developers.cloudflare.com/analytics/graphql-api/","301","false","false","false","true","sample-ai-guide","Cloudflare analytics documentation"
+"ai.example.com/hello","https://example.com/","302","false","false","false","true","sample-ai-hello","Example temporary redirect"

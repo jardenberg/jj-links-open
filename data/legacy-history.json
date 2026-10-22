@@ -1,0 +1,27 @@
+{
+  "provider": "Example legacy provider",
+  "captured_from": "Synthetic sample data",
+  "semantic_note": "Replace or remove this file when importing your own historical analytics.",
+  "links": [
+    {
+      "source_url": "go.example.com/docs",
+      "total_clicks": 184,
+      "human_clicks": 151,
+      "human_unique_clicks_row_sum": 126,
+      "bot_clicks": 33,
+      "qr_scans": 8,
+      "first_click": "2026-01-12 09:00:00",
+      "latest_click": "2026-09-28 17:30:00"
+    },
+    {
+      "source_url": "ai.example.com/guide",
+      "total_clicks": 96,
+      "human_clicks": 80,
+      "human_unique_clicks_row_sum": 69,
+      "bot_clicks": 16,
+      "qr_scans": 0,
+      "first_click": "2026-02-03 10:15:00",
+      "latest_click": "2026-10-11 14:45:00"
+    }
+  ]
+}
