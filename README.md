@@ -2,9 +2,11 @@
 
 **So many links, one single dashboard.**
 
-JJ Links is a self-hosted control plane for branded short links served by [Cloudflare Bulk Redirects](https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/). It gives one owner a searchable inventory, request analytics, guarded create and update workflows, system health, audit history and rollback snapshots without placing the dashboard in the redirect-serving path.
+JJ Links is a dashboard for branded short links served by [Cloudflare Bulk Redirects](https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/). It gives one owner a searchable inventory, request analytics, guarded create and update workflows, system health, audit history and rollback snapshots without placing the dashboard in the redirect-serving path.
 
 This repository is the clean public edition of a production tool. It contains synthetic examples only. No private redirects, analytics, account identifiers or deployment credentials are included.
+
+**Hosting requirement:** the current implementation runs on OpenAI Sites with its private access policy, Sign in with ChatGPT and a D1 database. You can explore the sample locally. Deploying the Worker directly to an ordinary Cloudflare account requires an authentication adapter first; the sign-in service is supplied by Sites and is not included in this repository. [Deployment requirements](docs/DEPLOYMENT.md).
 
 ## Why it exists
 
@@ -32,16 +34,19 @@ npm run dev
 
 Open the local URL printed by the development server. Without Cloudflare credentials, the application uses the synthetic redirects and analytics in `data/`.
 
+Local sign-in is a loopback-only development simulation using `seedy@sites.test`. It does not log in to a real ChatGPT account. Keep real production credentials out of sample mode.
+
 Run the release checks with:
 
 ```bash
 npm test
+npm run typecheck
 npm run build
 ```
 
 ## The easiest setup: ask an AI assistant
 
-You do not need to be an engineer or a GitHub expert to get JJ Links running. A capable AI coding assistant with access to a browser and terminal can inspect this repository, explain the few account-level choices and guide you through most of the setup.
+You do not need to operate GitHub or a terminal yourself. An AI coding assistant with repository, browser and terminal access can inspect this project and carry out the setup with you. An ordinary chat without those tools can explain the steps but cannot perform or verify the deployment.
 
 You will still need to own or control the domains, sign in to Cloudflare, approve security-sensitive changes and decide where the private dashboard should live. The AI should never ask you to paste API tokens into chat or commit them to GitHub.
 
@@ -50,6 +55,13 @@ Copy this prompt into ChatGPT, Claude or another capable coding assistant:
 ```text
 Help me set up my own private JJ Links dashboard from this repository:
 https://github.com/jardenberg/jj-links-open
+
+First read README.md, SECURITY.md and docs/DEPLOYMENT.md at the latest release.
+This implementation currently depends on OpenAI Sites for trusted authentication.
+Confirm that you have the necessary hosting tools before promising a deployment.
+If I need ordinary Cloudflare hosting instead, explain the authentication work
+required before doing it. Do not deploy a raw Worker that trusts browser-supplied
+identity headers.
 
 My goal is to manage two branded short-link domains through Cloudflare Bulk
 Redirects, with a private dashboard, request analytics, safe create/update
@@ -86,7 +98,7 @@ Different assistants have different access to browsers, terminals and Cloudflare
 
 ## Connect your Cloudflare account
 
-JJ Links currently supports exactly two short-link hostnames. Copy `.env.example` to `.dev.vars` for local development and provide:
+JJ Links currently supports exactly two short-link hostnames in one Cloudflare zone. Configure these values in the private Site's server-side runtime settings. Leave credentials empty when exploring the local sample:
 
 ```dotenv
 CLOUDFLARE_API_TOKEN=...
@@ -104,7 +116,9 @@ Create a Cloudflare API token limited to the account and zone you operate. The c
 - Account Rulesets: Read
 - Zone Analytics: Read
 
-Store the token as a server-side secret. Never put it in `.env.example`, a client-side variable, a screenshot, an issue or a commit.
+Store the token as a server-side secret. Never put it in `.env.example`, a client-side variable, a screenshot, an issue or a commit. Owner identity is mandatory for live access, and D1 must be migrated before writes are enabled.
+
+Use **Refresh** to collect Cloudflare analytics. Reading the page uses stored metrics; this public edition does not install a background schedule. Its 30-day figures cover the current UTC date and the previous 29 dates. Cloudflare analytics may be sampled and are request counts rather than unique people. Synthetic legacy history appears only in sample mode.
 
 See [Deployment](docs/DEPLOYMENT.md) for D1 setup, authentication, first synchronization and production verification.
 
@@ -112,13 +126,17 @@ See [Deployment](docs/DEPLOYMENT.md) for D1 setup, authentication, first synchro
 
 JJ Links can modify an entire Bulk Redirect List, so the safe path matters:
 
-1. Writes require an authenticated owner and a same-origin request.
-2. New links are rejected on case-insensitive collision.
-3. Updates require an explicit confirmation.
-4. The current full list is stored as an immutable D1 snapshot before replacement.
-5. JJ Links waits for Cloudflare's asynchronous operation to finish.
-6. It rereads and reconciles the complete list.
-7. It verifies the changed public URL and a redirect on the other configured host.
+1. The page and data APIs require the configured owner; writes also require a same-origin request.
+2. A D1 lock serializes changes and a saved request ID prevents a replay from executing again.
+3. New links are rejected on case-insensitive collision.
+4. Updates preserve existing options and save a full D1 snapshot before replacement.
+5. JJ Links checks for outside edits and waits for Cloudflare's operation.
+6. It compares every saved mapping, option and comment with the intended list.
+7. It verifies the changed public URL with bounded retries.
+
+If Cloudflare confirms the mapping before its edge has propagated, the UI reports that public verification is pending. If the submission itself has an uncertain outcome, use **Check status** in the same form. JJ Links retains the write lock until it can reconcile the saved list. It never automatically resubmits an uncertain change.
+
+Use this app as the single writer while making changes. Cloudflare's full-list API has no atomic compare-and-swap operation; an outside writer can still race the final replacement. [Recovery and limitations](docs/DEPLOYMENT.md#recovery).
 
 The application intentionally does not sit between visitors and their redirect destinations.
 
@@ -148,7 +166,7 @@ Read [Architecture](docs/ARCHITECTURE.md) for data flow, trust boundaries and tr
 
 ## Project status
 
-Version `1.0.0` is the first public reference release. It reflects a working personal deployment, but remains intentionally small: one owner, one Cloudflare account, one Bulk Redirect List and two source hostnames.
+Current release: `1.0.2`. This is a small reference implementation backed by a working personal deployment: one owner, one Cloudflare account, one zone, one Bulk Redirect List and two source hostnames. It has automated regression coverage, but has not had an independent penetration test.
 
 Issues and pull requests are welcome. Please read [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md) first.
 

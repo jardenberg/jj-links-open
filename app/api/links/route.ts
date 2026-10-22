@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { errorResponse, json, requireApiUser } from "../../../lib/api-auth";
-import { createRedirect } from "../../../lib/cloudflare";
+import { createRedirect, recoverWrite } from "../../../lib/cloudflare";
 import { isAllowedHost } from "../../../lib/runtime-config";
-import { auditEvent, requestAlreadyCompleted } from "../../../lib/store";
+import { auditEvent } from "../../../lib/store";
+import { guardedWrite } from "../../../lib/write-guard";
 
 const schema = z.object({
   requestId: z.string().uuid(),
@@ -23,13 +24,15 @@ export async function POST(request: Request) {
     const body = schema.parse(await request.json());
     requestId = body.requestId;
     sourceUrl = `${body.host}/${body.slug.replace(/^\/+/, "")}`;
-    if (await requestAlreadyCompleted(requestId)) return json({ ok: true, idempotent: true });
-    await auditEvent({ requestId, actorId: user.userId, actorEmail: user.email, action: "create", sourceUrl, after: body, status: "started" });
-    const result = await createRedirect(body);
-    await auditEvent({ requestId, actorId: user.userId, actorEmail: user.email, action: "create", sourceUrl, after: result.item, operationId: result.operationId, verification: result.verification, status: "completed" });
+    const actor = { requestId, actorId: user.userId, actorEmail: user.email, action: "create", sourceUrl };
+    const result = await guardedWrite(requestId, user.userId, { action: "create", ...body }, async (context) => {
+      await auditEvent({ ...actor, after: body, status: "started" });
+      return createRedirect(body, context);
+    }, recoverWrite);
+    if (result.outcome === "processing") return json({ ok: true, ...result }, 202);
+    await auditEvent({ ...actor, after: result.item, operationId: result.operationId, verification: result.verification, status: "completed" }).catch(() => console.error("Confirmed redirect write: audit completion needs reconciliation."));
     return json({ ok: true, ...result }, 201);
   } catch (error) {
-    if (user && requestId) await auditEvent({ requestId, actorId: user.userId, actorEmail: user.email, action: "create", sourceUrl, status: "failed", error: error instanceof Error ? error.message : "Unknown failure" }).catch(() => {});
     return errorResponse(error);
   }
 }
