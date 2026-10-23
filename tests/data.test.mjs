@@ -25,9 +25,21 @@ test("release surfaces agree on version", async () => {
   const packageJson = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
   const versionSource = await readFile(new URL("lib/version.ts", root), "utf8");
   const changelog = await readFile(new URL("CHANGELOG.md", root), "utf8");
-  assert.equal(packageJson.version, "1.1.0");
-  assert.match(versionSource, /APP_VERSION = "1\.1\.0"/);
-  assert.match(changelog, /\[1\.1\.0\] - 2026-10-22/);
+  assert.equal(packageJson.version, "1.1.1");
+  assert.match(versionSource, /APP_VERSION = "1\.1\.1"/);
+  assert.match(changelog, /\[1\.1\.1\] - 2026-10-23/);
+});
+
+test("README credits and links the owner-reported community video without an embedded player", async () => {
+  const readme = await readFile(new URL("README.md", root), "utf8");
+  assert.match(readme, /## JJ Links in the wild/);
+  assert.match(readme, /Johannes Sundlo/);
+  assert.ok(readme.includes("https://www.youtube.com/@FullStackHR"));
+  assert.ok(readme.includes("https://www.youtube.com/shorts/Oz_TT2oBeW8"));
+  assert.ok(readme.includes("https://i.ytimg.com/vi/Oz_TT2oBeW8/hqdefault.jpg"));
+  assert.match(readme, /as described by its owner/);
+  assert.match(readme, /Bundled redirect and analytics fixtures are synthetic/);
+  assert.doesNotMatch(readme, /<iframe\b/i);
 });
 
 test("overview headline matches the released copy", async () => {
