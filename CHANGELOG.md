@@ -2,6 +2,16 @@
 
 All notable changes to JJ Links Open are recorded here. Newest releases come first.
 
+## [1.1.1] - 2026-10-23
+
+### Added
+
+- An attributed "JJ Links in the wild" README section featuring Johannes Sundlo's public thank-you video, with a clickable thumbnail and a summary of his reported use.
+
+### Changed
+
+- Update release labels for this documentation-only patch. Redirect, authentication and data-handling behavior are unchanged.
+
 ## [1.1.0] - 2026-10-22
 
 ### Added

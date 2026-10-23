@@ -10,6 +10,14 @@ Cloudflare Bulk Redirects keeps serving your links directly. Closing or taking t
 
 ![JJ Links dashboard showing synthetic example links](docs/images/dashboard-sample.jpg)
 
+## JJ Links in the wild
+
+Johannes Sundlo ([@FullStackHR](https://www.youtube.com/@FullStackHR)) describes using JJ Links for his `sundlo.link` short links in **Tack!**, a 57-second video in Swedish. He covers searching and adding links, request activity, pre-update backups, and why redirects keep working even when the dashboard is offline.
+
+[![Watch Johannes Sundlo's Tack! video about JJ Links](https://i.ytimg.com/vi/Oz_TT2oBeW8/hqdefault.jpg)](https://www.youtube.com/shorts/Oz_TT2oBeW8)
+
+A community example, as described by its owner. For current installation instructions, follow the [setup guide](docs/DEPLOYMENT.md).
+
 ## Start here, even if you are not technical
 
 You need a Cloudflare account, control of your short-link domains, and a GitHub account for the deployment button to copy the source. Your copy can be private.
@@ -71,7 +79,7 @@ that does not depend on it. Do not claim deployment from a passing build alone.
 - Full-backup restore with a deletion preview and a typed confirmation.
 - Stored snapshots, audit records, serialized writes and safe request replay.
 
-The public repository contains synthetic examples only. Your actual mappings, notes and analytics stay in your own Cloudflare services.
+Bundled redirect and analytics fixtures are synthetic. Your actual mappings, notes and analytics stay in your own Cloudflare services.
 
 ## CSV import and restore
 

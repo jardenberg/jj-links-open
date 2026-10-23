@@ -25,7 +25,7 @@ JJ Links is an administrative interface with permission to modify an entire Clou
 - avoid editing the list through other tools while JJ Links is writing it;
 - review dependency and platform updates before deploying them.
 
-The public repository contains synthetic data only. Read-only sample mode is restricted to a loopback development server without a Cloudflare API token. It is compiled out of production builds. A production installation with incomplete Access settings shows a locked setup page and refuses API access.
+Bundled redirect and analytics fixtures are synthetic. Attributed community examples link to their creators' public material; they do not include private redirect inventories or deployment credentials. Read-only sample mode is restricted to a loopback development server without a Cloudflare API token. It is compiled out of production builds. A production installation with incomplete Access settings shows a locked setup page and refuses API access.
 
 CSV exports, pre-import snapshots and import previews contain full destinations and notes. Treat them as private data. The application keeps them in your D1 database; it does not upload them to this repository or an AI service. Opening a CSV in spreadsheet software can interpret formula-like notes: import columns as text. Import previews expire after 15 minutes, but this version does not automatically delete stored previews, audit events or snapshots. Include those records in your retention and backup policy.
 
