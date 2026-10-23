@@ -28,7 +28,7 @@
     "privacy-check": "node scripts/check-public-data.mjs"
   },
   "dependencies": {
-    "drizzle-orm": "0.45.2",
+    "drizzle-orm": "0.45.4",
     "lucide-react": "^1.31.0",
     "jose": "6.2.13",
     "react": "19.3.1",
